@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>DUYBUI TX</title>
+    <style>
+        :root {
+            --primary: #007AFF;
+            --success: #34C759;
+            --danger: #FF3B30;
+            --warning: #FF9500;
+            --bg: #F2F2F7;
+            --card: #FFFFFF;
+            --text: #000000;
+            --secondary: #8E8E93;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1C1C1E;
+                --card: #2C2C2E;
+                --text: #FFFFFF;
+                --secondary: #AEAEB2;
+            }
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            touch-action: manipulation;
+        }
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 16px;
+            text-align: center;
+            font-size: 21px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: none;
+        }
+        .container.active {
+            display: block;
+        }
+        .card {
+            background: var(--card);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        h2 { font-size: 20px; margin: 0 0 12px; }
+        .big-btn {
+            width: 100%;
+            height: 88px;
+            font-size: 32px;
+            font-weight: 700;
+            border-radius: 18px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .tai-btn { background: linear-gradient(#FF9500, #E67E00); color: white; }
+        .xiu-btn { background: linear-gradient(#007AFF, #0066CC); color: white; }
+        .history-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 18px;
+            line-height: 32px;
+        }
+        .dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+        }
+        .dot-T { background: #FF9500; }
+        .dot-X { background: #007AFF; }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--secondary);
+        }
+        .stat-row:last-child { border: none; }
+        .label { color: var(--secondary); }
+        .value { font-weight: 600; }
+        .markov-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .recommend {
+            padding: 16px;
+            border-radius: 14px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .tab-bar {
+            display: flex;
+            background: var(--card);
+            border-top: 1px solid var(--secondary);
+            padding: 8px 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        .tab-item {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+            color: var(--secondary);
+            cursor: pointer;
+        }
+        .tab-item.active {
+            color: var(--primary);
+        }
+        .tab-item i { font-size: 24px; display: block; margin-bottom: 2px; }
+        .hidden { display: none !important; }
+        .alert { color: var(--danger); font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="header">DUYBUI TX<br><span style="font-size:15px;opacity:0.9">MULTI-ANGLE PREDICTION FRAMEWORK</span></div>
+
+<!-- TAB 1: LỊCH SỬ -->
+<div class="container active" id="tab-history">
+    <div class="card">
+        <h2>Thêm kết quả phiên</h2>
+        <button class="big-btn tai-btn" onclick="addResult('T')">TÀI</button>
+        <button class="big-btn xiu-btn" onclick="addResult('X')">XỈU</button>
+    </div>
+
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2>Lịch sử gần đây (<span id="total-count">0</span>)</h2>
+            <button onclick="clearLast()" style="background:none;border:none;color:var(--danger);font-size:15px">Xóa cuối</button>
+        </div>
+        <div id="history-grid" class="history-grid"></div>
+    </div>
+
+    <div class="card">
+        <button onclick="resetAll()" style="background:var(--danger);width:100%;color:white;padding:14px;border-radius:12px">Reset toàn bộ dữ liệu</button>
+        <button onclick="exportData()" style="margin-top:8px;background:var(--secondary);width:100%;color:white;padding:14px;border-radius:12px">Export JSON</button>
+        <label style="display:block;margin-top:8px">
+            <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
+            <button onclick="document.getElementById('import-input').click()" style="background:var(--secondary);width:100%;color:white;padding:14px;border-radius:12px">Import JSON</button>
+        </label>
+    </div>
+</div>
+
+<!-- TAB 2: PHÂN TÍCH -->
+<div class="container" id="tab-analysis">
+    <div class="card">
+        <h2>Tầng 1 – Phân phối dài hạn</h2>
+        <div class="stat-row"><span class="label">Tài % (100 phiên)</span><span id="dist-t" class="value">50.0%</span></div>
+        <div class="stat-row"><span class="label">Xỉu %</span><span id="dist-x" class="value">50.0%</span></div>
+        <div class="stat-row"><span class="label">Lệch so với 50/50</span><span id="deviation" class="value">0.0%</span></div>
+    </div>
+
+    <div class="card">
+        <h2>Tầng 2 – Markov Chain</h2>
+        <div style="margin-bottom:12px">
+            <strong>Bậc 1</strong><br>
+            <div id="markov1"></div>
+        </div>
+        <div>
+            <strong>Bậc 2 (2 phiên trước)</strong><br>
+            <div id="markov2"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Tầng 3 – Nhịp độ & Tần suất</h2>
+        <div class="stat-row"><span class="label">Tần suất đảo chiều (1-1)</span><span id="alt-rate" class="value">0%</span></div>
+        <div class="stat-row"><span class="label">Tần suất bệt ≥3</span><span id="streak-rate" class="value">0%</span></div>
+        <div class="stat-row"><span class="label">Chuỗi hiện tại</span><span id="current-streak-display" class="value">0</span></div>
+    </div>
+
+    <div class="card">
+        <h2>Tầng 4 – Tâm lý đám đông</h2>
+        <div id="psychology" class="stat-row">
+            <span class="label">Đám đông đang nghĩ gì?</span>
+            <span id="crowd-opinion" class="value"></span>
+        </div>
+    </div>
+
+    <div class="card">
+        <button onclick="runFullAnalysis()" style="background:var(--primary);color:white;width:100%;padding:16px;border-radius:14px;font-size:17px">CHẠY PHÂN TÍCH ĐẦY ĐỦ</button>
+    </div>
+</div>
+
+<!-- TAB 3: KẾT LUẬN -->
+<div class="container" id="tab-conclusion">
+    <div class="card">
+        <div style="text-align:center">
+            <h2>Hướng nghiêng tiếp theo</h2>
+            <div id="final-direction" style="font-size:48px;font-weight:700;margin:12px 0"></div>
+            <div style="font-size:28px;color:var(--primary)" id="final-pct"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Đánh giá hệ thống</h2>
+        <div class="stat-row"><span class="label">Mức tự tin</span><span id="confidence-level" class="value"></span></div>
+        <div class="stat-row"><span class="label">Khuyến nghị</span><span id="recommend-text" class="value"></span></div>
+    </div>
+
+    <div class="card" id="warning-card">
+        <div class="alert">⚠️ Dù nghiêng mạnh, quá khứ không ràng buộc tương lai. Trò chơi ngẫu nhiên vẫn có thể đảo chiều bất kỳ lúc nào.</div>
+    </div>
+</div>
+
+<!-- TAB 4: CÀI ĐẶT -->
+<div class="container" id="tab-settings">
+    <div class="card">
+        <h2>Ngưỡng vào lệnh</h2>
+        <input type="number" id="min-pct" value="53" placeholder="Ngưỡng tối thiểu (%)" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--secondary);margin-bottom:12px">
+        <button onclick="saveSettings()" style="background:var(--success);color:white;width:100%;padding:14px;border-radius:12px">Lưu ngưỡng</button>
+    </div>
+</div>
+
+<div class="tab-bar">
+    <div class="tab-item active" onclick="switchTab(0)"><i>📖</i>Lịch sử</div>
+    <div class="tab-item" onclick="switchTab(1)"><i>📊</i>Phân tích</div>
+    <div class="tab-item" onclick="switchTab(2)"><i>🎯</i>Kết luận</div>
+    <div class="tab-item" onclick="switchTab(3)"><i>⚙️</i>Cài đặt</div>
+</div>
+
+<script>
+let txHistory = [];
+let settings = { minPct: 53 };
+
+function loadData() {
+    const saved = localStorage.getItem('duybuiTX_history');
+    if (saved) txHistory = JSON.parse(saved);
+    const savedSettings = localStorage.getItem('duybuiTX_settings');
+    if (savedSettings) settings = JSON.parse(savedSettings);
+    renderHistory();
+}
+
+function saveData() {
+    localStorage.setItem('duybuiTX_history', JSON.stringify(txHistory));
+}
+
+function saveSettings() {
+    settings.minPct = parseFloat(document.getElementById('min-pct').value) || 53;
+    localStorage.setItem('duybuiTX_settings', JSON.stringify(settings));
+    alert('Đã lưu ngưỡng!');
+}
+
+function addResult(r) {
+    txHistory.push(r);
+    saveData();
+    renderHistory();
+}
+
+function renderHistory() {
+    const grid = document.getElementById('history-grid');
+    grid.innerHTML = txHistory.slice(-40).map(r => 
+        `<span class="dot dot-${r}">${r}</span>`
+    ).join('');
+    document.getElementById('total-count').textContent = txHistory.length;
+}
+
+function clearLast() {
+    if (txHistory.length > 0 && confirm('Xóa kết quả cuối?')) {
+        txHistory.pop();
+        saveData();
+        renderHistory();
+    }
+}
+
+function resetAll() {
+    if (confirm('Xóa TOÀN BỘ lịch sử?')) {
+        txHistory = [];
+        saveData();
+        renderHistory();
+    }
+}
+
+function exportData() {
+    const blob = new Blob([JSON.stringify(txHistory)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'duybui_tx_history.json';
+    a.click();
+}
+
+function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        try {
+            txHistory = JSON.parse(ev.target.result);
+            if (!Array.isArray(txHistory)) throw new Error();
+            saveData();
+            renderHistory();
+            alert('Import thành công!');
+        } catch {
+            alert('File không hợp lệ!');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// ====================== CORE ANALYSIS ======================
+
+function getRecent(n = 100) {
+    return txHistory.slice(-Math.min(n, txHistory.length));
+}
+
+function runFullAnalysis() {
+    if (txHistory.length < 20) {
+        alert('Cần ít nhất 20 phiên để phân tích chính xác!');
+        return;
+    }
+
+    const recent = getRecent(100);
+    const len = recent.length;
+
+    // Tầng 1: Phân phối
+    const countT = recent.filter(x => x === 'T').length;
+    const pctT = (countT / len * 100);
+    const pctX = 100 - pctT;
+    const deviation = Math.abs(pctT - 50).toFixed(1);
+    document.getElementById('dist-t').textContent = pctT.toFixed(1) + '%';
+    document.getElementById('dist-x').textContent = pctX.toFixed(1) + '%';
+    document.getElementById('deviation').textContent = deviation + '%';
+
+    // Tầng 2: Markov bậc 1 & bậc 2
+    const markov1 = calculateMarkov1(recent);
+    const markov2 = calculateMarkov2(recent);
+
+    let markovHTML = '';
+    markovHTML += `T→T: <b>${markov1.pTT.toFixed(1)}%</b> | T→X: <b>${markov1.pTX.toFixed(1)}%</b><br>`;
+    markovHTML += `X→T: <b>${markov1.pXT.toFixed(1)}%</b> | X→X: <b>${markov1.pXX.toFixed(1)}%</b>`;
+    document.getElementById('markov1').innerHTML = markovHTML;
+
+    let markov2HTML = '';
+    ['TT','TX','XT','XX'].forEach(state => {
+        if (markov2[state]) {
+            const nextT = markov2[state].T;
+            markov2HTML += `${state} → <b>${nextT > 50 ? 'T' : 'X'}</b> (${nextT.toFixed(0)}%)<br>`;
+        }
+    });
+    document.getElementById('markov2').innerHTML = markov2HTML;
+
+    // Tầng 3: Nhịp độ
+    let alternations = 0;
+    let longStreaks = 0;
+    let currentStreakLen = 1;
+    for (let i = 1; i < len; i++) {
+        if (recent[i] !== recent[i-1]) {
+            alternations++;
+            currentStreakLen = 1;
+        } else {
+            currentStreakLen++;
+            if (currentStreakLen >= 3) longStreaks++;
+        }
+    }
+    const altRate = (alternations / (len - 1) * 100).toFixed(0);
+    const streakRate = (longStreaks / (len - 1) * 100).toFixed(0);
+    document.getElementById('alt-rate').textContent = altRate + '%';
+    document.getElementById('streak-rate').textContent = streakRate + '%';
+
+    // Chuỗi hiện tại
+    let currentStreak = 1;
+    const last = recent[recent.length-1];
+    for (let i = recent.length-2; i >= 0; i--) {
+        if (recent[i] === last) currentStreak++;
+        else break;
+    }
+    document.getElementById('current-streak-display').textContent = `${currentStreak} ${last}`;
+
+    // Tầng 4: Tâm lý đám đông
+    let crowd = '';
+    if (currentStreak >= 5) {
+        crowd = `Đám đông nghĩ sắp đảo → Nghiêng ngược (${last === 'T' ? 'Xỉu' : 'Tài'})`;
+    } else if (alternations / len > 0.65) {
+        crowd = 'Đám đông nghĩ sẽ bệt → Nghiêng theo chuỗi';
+    } else {
+        crowd = 'Không rõ ràng';
+    }
+    document.getElementById('crowd-opinion').textContent = crowd;
+
+    // Tầng 5: Tổng hợp có trọng số
+    const scores = {
+        distribution: pctT > 50 ? pctT : 100 - pctT,
+        markov: markov1.pTT > 50 ? markov1.pTT : 100 - markov1.pTT,
+        streak: currentStreak >= 4 ? 62 : 52,
+        rhythm: altRate > 60 ? 58 : 50,
+        psychology: currentStreak >= 5 ? 59 : 51
+    };
+
+    const weighted = (
+        scores.distribution * 0.20 +
+        scores.markov * 0.30 +
+        scores.streak * 0.20 +
+        scores.rhythm * 0.15 +
+        scores.psychology * 0.15
+    );
+
+    const finalPct = Math.min(68, Math.max(50, weighted.toFixed(1)));
+    const finalSide = finalPct > 55 ? (markov1.pTT > 50 ? 'TÀI' : 'XỈU') : (pctT > 50 ? 'TÀI' : 'XỈU');
+
+    // Hiển thị kết luận
+    document.getElementById('final-direction').innerHTML = finalSide + `<span style="font-size:24px"> →</span>`;
+    document.getElementById('final-pct').innerHTML = `${finalPct}% nghiêng <b>${finalSide}</b>`;
+
+    let confidence = 'Thấp';
+    let rec = '🔴 Nghỉ - Không đủ nghiêng';
+    let recColor = 'var(--danger)';
+
+    const consistency = Math.abs(scores.markov - scores.streak) < 8 ? 1 : 0;
+
+    if (finalPct >= settings.minPct && consistency) {
+        confidence = finalPct > 60 ? 'Cao' : 'Trung bình';
+        rec = `✅ NÊN VÀO ${finalSide}`;
+        recColor = 'var(--success)';
+    } else if (finalPct >= 53) {
+        confidence = 'Trung bình';
+        rec = '🟡 Quan sát - Nghiêng nhẹ';
+        recColor = 'var(--warning)';
+    }
+
+    document.getElementById('confidence-level').innerHTML = `<span style="color:${recColor}">${confidence}</span>`;
+    const recEl = document.getElementById('recommend-text');
+    recEl.textContent = rec;
+    recEl.style.color = recColor;
+
+    // Chuyển sang tab kết luận
+    switchTab(2);
+}
+
+// MARKOV HELPERS
+function calculateMarkov1(recent) {
+    let tt=0, tx=0, xt=0, xx=0;
+    for (let i = 0; i < recent.length-1; i++) {
+        if (recent[i] === 'T' && recent[i+1] === 'T') tt++;
+        else if (recent[i] === 'T' && recent[i+1] === 'X') tx++;
+        else if (recent[i] === 'X' && recent[i+1] === 'T') xt++;
+        else if (recent[i] === 'X' && recent[i+1] === 'X') xx++;
+    }
+    const totalT = tt + tx || 1;
+    const totalX = xt + xx || 1;
+    return {
+        pTT: (tt / totalT * 100),
+        pTX: (tx / totalT * 100),
+        pXT: (xt / totalX * 100),
+        pXX: (xx / totalX * 100)
+    };
+}
+
+function calculateMarkov2(recent) {
+    const states = {};
+    ['TT','TX','XT','XX'].forEach(s => states[s] = {T:0, X:0, count:0});
+    for (let i = 0; i < recent.length-2; i++) {
+        const state = recent[i] + recent[i+1];
+        const next = recent[i+2];
+        if (states[state]) {
+            states[state][next]++;
+            states[state].count++;
+        }
+    }
+    Object.keys(states).forEach(s => {
+        const c = states[s].count || 1;
+        states[s].T = (states[s].T / c * 100);
+    });
+    return states;
+}
+
+function switchTab(n) {
+    document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+    document.getElementById(['tab-history','tab-analysis','tab-conclusion','tab-settings'][n]).classList.add('active');
+    
+    document.querySelectorAll('.tab-item').forEach((t,i) => {
+        t.classList.toggle('active', i === n);
+    });
+    
+    if (n === 1) runFullAnalysis(); // tự động phân tích khi vào tab
+}
+
+// Khởi chạy
+loadData();
+switchTab(0); // mặc định lịch sử
+</script>
+</body>
+</html>
